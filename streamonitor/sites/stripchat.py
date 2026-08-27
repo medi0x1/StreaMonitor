@@ -31,6 +31,7 @@ class StripChat(Bot):
         "Ook7quaiNgiyuhai": "EQueeGh2kaewa3ch",
     }
     _session = None
+    _user_id_cache = {}  # Cache pour les IDs utilisateur
     
     _DOPPIO_INDEX_PATTERN = re.compile(r'(\d+):\s*"([a-f0-9]+)"')
     _DOPPIO_REQUIRE_PATTERN = re.compile(r'require\(["\']\./(Doppio[^"\']+\.js)["\']\)')
@@ -369,15 +370,65 @@ class StripChat(Bot):
         params = f"{'&' if '?' in variants[0]['url'] else '?'}psch={psch}&pkey={pkey}"
         return [dict(v, url=f"{v['url']}{params}") for v in variants]
 
+    def _get_user_id(self, username):
+        """Récupère l'ID utilisateur avec cache."""
+        # Vérifier le cache
+        if username in self._user_id_cache:
+            return self._user_id_cache[username]
+        
+        try:
+            url = f"https://stripchat.com/api/front/v2/users/username/{username}"
+            r = curl_requests.get(url, headers={
+                **self.headers,
+                "Accept": "application/json"
+            }, impersonate="chrome", timeout=10)
+            
+            if r.status_code == 200:
+                data = r.json()
+                user_id = data.get("item", {}).get("id")
+                if user_id:
+                    self._user_id_cache[username] = user_id
+                    return user_id
+        except Exception as e:
+            self.logger.warning(f"Failed to get user ID for {username}: {e}")
+        
+        return None
+
     def _getStatusData(self, username):
-        url = f"https://stripchat.com/api/front/v2/models/username/{username}/cam?uniq={self.uniq()}"
-        r = curl_requests.get(url, headers={
-            **self.headers,
-            "Accept": "application/json"
-        }, impersonate="chrome", timeout=10)
-        if r.status_code != 200:
+        """Récupère les données de statut avec le nouvel endpoint API."""
+        # Étape 1: Récupérer l'ID utilisateur
+        user_id = self._get_user_id(username)
+        if user_id is None:
             return None
-        return r.json()
+        
+        # Étape 2: Utiliser le nouvel endpoint avec l'ID
+        url = f"https://stripchat.com/api/front/v2/models/{user_id}/cam?uniq={self.uniq()}"
+        
+        try:
+            r = curl_requests.get(url, headers={
+                **self.headers,
+                "Accept": "application/json"
+            }, impersonate="chrome", timeout=10)
+            
+            if r.status_code == 404:
+                # Si 404, l'utilisateur a peut-être changé de nom, on vide le cache et on réessaie
+                self._user_id_cache.pop(username, None)
+                user_id = self._get_user_id(username)
+                if user_id:
+                    url = f"https://stripchat.com/api/front/v2/models/{user_id}/cam?uniq={self.uniq()}"
+                    r = curl_requests.get(url, headers={
+                        **self.headers,
+                        "Accept": "application/json"
+                    }, impersonate="chrome", timeout=10)
+            
+            if r.status_code != 200:
+                return None
+                
+            return r.json()
+            
+        except Exception as e:
+            self.logger.error(f"API error for {username}: {e}")
+            return None
 
     def _update_lastInfo(self, data):
         if "cam" not in data:
