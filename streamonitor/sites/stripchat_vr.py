@@ -6,6 +6,7 @@ from streamonitor.sites.stripchat import StripChat
 class StripChatVR(StripChat):
     site = 'StripChatVR'
     siteslug = 'SCVR'
+    bulk_update = False
 
     vr_frame_format_map = {
         'FISHEYE': 'F',
@@ -13,8 +14,8 @@ class StripChatVR(StripChat):
         'CIRCULAR': 'C',
     }
 
-    def __init__(self, username):
-        super().__init__(username)
+    def __init__(self, username, room_id=None):
+        super().__init__(username, room_id)
         self.stopDownloadFlag = False
         self.vr = True
 
@@ -23,14 +24,15 @@ class StripChatVR(StripChat):
         if not VR_FORMAT_SUFFIX:
             return ''
 
-        vr_cam_settings = self.lastInfo['broadcastSettings']['vrCameraSettings']
-        if vr_cam_settings is not None:
-            vr_packing = vr_cam_settings["stereoPacking"]
-            vr_frame_format = self.vr_frame_format_map[vr_cam_settings["frameFormat"]]
-            vr_angle = vr_cam_settings["horizontalAngle"]
-            vr_suffix = f'_{vr_packing}_{vr_frame_format}{vr_angle}'
-            return vr_suffix
-        return ''
+        vr_cam_settings = self.lastInfo.get('broadcastSettings', {}).get('vrCameraSettings', {})
+        if not isinstance(vr_cam_settings, dict):
+            return ''
+
+        vr_packing = vr_cam_settings["stereoPacking"]
+        vr_frame_format = self.vr_frame_format_map[vr_cam_settings["frameFormat"]]
+        vr_angle = vr_cam_settings["horizontalAngle"]
+        vr_suffix = f'_{vr_packing}_{vr_frame_format}{vr_angle}'
+        return vr_suffix
 
     def getWebsiteURL(self):
         return "https://vr.stripchat.com/cam/" + self.username
@@ -38,7 +40,7 @@ class StripChatVR(StripChat):
     def getStatus(self):
         status = super(StripChatVR, self).getStatus()
         if status == Status.PUBLIC:
-            if self.lastInfo['model']['isVr'] and type(self.lastInfo['broadcastSettings']['vrCameraSettings']) is dict:
+            if self.lastInfo['model']['isVr']:
                 return Status.PUBLIC
             return Status.OFFLINE
         return status

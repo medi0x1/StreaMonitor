@@ -12,7 +12,7 @@ MIN_FREE_DISK_PERCENT = env.float("STRMNTR_MIN_FREE_SPACE", 5.0)  # in %
 DEBUG = env.bool("STRMNTR_DEBUG", False)
 
 # The camsoda bot ignores this setting in favor of a chrome useragent generated with the fake-useragent library
-HTTP_USER_AGENT = env.str("STRMNTR_USER_AGENT", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:135.0) Gecko/20100101 Firefox/135.0")
+HTTP_USER_AGENT = env.str("STRMNTR_USER_AGENT", "Mozilla/5.0 (X11; Ubuntu; Linux x86_64; rv:152.0) Gecko/20100101 Firefox/152.0")
 
 # Specify the full path to the ffmpeg binary. By default, ffmpeg found on PATH is used.
 FFMPEG_PATH = env.str("STRMNTR_FFMPEG_PATH", 'ffmpeg')
@@ -33,6 +33,13 @@ CONTAINER = env.str("STRMNTR_CONTAINER", 'mp4')
 
 # Add auto-generated VR format suffix to files
 VR_FORMAT_SUFFIX = env.bool("STRMNTR_VR_FORMAT_SUFFIX", True)
+
+# Set ffmpeg readrate to whatever works for you.
+# Usually this should be either 0, 1 or 1.3 depending on the network
+# Setting it to 0 can result in very fragmented recordings.
+# 1 can result in skipped segments
+# 1.3 should be the sweet spot but use what works
+FFMPEG_READRATE = env.int("STRMNTR_FFMPEG_READRATE", 1.3)
 
 # Specify the segment time in seconds
 # If None, the video will be downloaded as a single file
